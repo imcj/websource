@@ -175,11 +175,12 @@ class Path:
         return _relative_path + "/".join ( dest[found:] )
 
 class PathScan ( Path ):
-    def __init__ ( self, path ):
+    def __init__ ( self, path, out = 'gen' ):
         """
         >>> scan = PathScan ( os.path.abspath ( "./highlight" ) )
         """
         self._path = path
+        self._out  = out
         
         if path[0] == ".":
             self._path = os.path.abspath ( path )
@@ -202,20 +203,26 @@ class PathScan ( Path ):
             "dirs" : dirs,
             "files" : files,
             "relative_path" : relative_path,
-            "media_abs_path" : self.relative_path ( os.path.join ( 'gen', relative_path, "fixme" ), os.path.join ( "gen" ) )
+            "media_abs_path" : self.relative_path ( os.path.join ( self._out, relative_path, "fixme" ), os.path.join ( self._out ) )
         }
         
         g = _gen ( path, context )
-        _gen_index_path = os.path.join ( "gen", relative_path, "index.html" )
+        _gen_index_path = os.path.join ( self._out, relative_path, "index.html" )
+        context['gen_index_path'] = _gen_index_path
         try:
             os.makedirs ( os.path.dirname ( _gen_index_path ) )
         except OSError:
             pass
         
-
+        context['index'] = g
         fd = open ( _gen_index_path, "w" )
         fd.write ( g.encode ( "utf-8" ) )
         fd.close ( )
+        
+        try:
+            self.process_index ( context )
+        except AttributeError:
+            pass
         # sys.exit ()
         
         for f in files:
@@ -224,7 +231,7 @@ class PathScan ( Path ):
     def generate_source ( self, path, context ):
         relative_path = os.sep.join ( self.relative_path ( self._path, context['abs_path'] ).split ( "/" )[1:] )
         source_path = os.path.join ( context['abs_path'], path )
-        gen_path = os.path.join ( "gen", relative_path, "%s.html" % path )
+        gen_path = os.path.join ( self._out, relative_path, "%s.html" % path )
         
         fd = open ( source_path, "rb" )
         content = fd.read ()
@@ -234,6 +241,7 @@ class PathScan ( Path ):
             return
         fd.close ()
         context['content'] = content
+        context['gen_source_path'] = gen_path
 
         source_content = _gen_source ( path, context )
 
@@ -241,6 +249,12 @@ class PathScan ( Path ):
         source_fd.write ( source_content.encode("utf-8") )
         source_fd.close ()
         
+        try:
+            self.process_source ( context )
+        except AttributeError:
+            pass
+        
+"""
 if "__main__" == __name__:
     import doctest
     doctest.testmod ()
@@ -320,3 +334,4 @@ def main ():
     
 if __name__ == "__main__":
     main ()
+"""
